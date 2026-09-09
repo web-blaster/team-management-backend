@@ -1,0 +1,15 @@
+import { Router } from 'express';
+import { Role } from '../../constants/roles.js';
+import { authenticate,authorize,validate } from '../../middleware/index.js';
+import { asyncHandler } from '../../utils/core.js';
+import { projectController } from './project.controller.js';
+import { projectBodySchema,projectListQuerySchema,projectMemberParamsSchema,projectParamsSchema,projectUpdateSchema } from './project.validation.js';
+const router=Router();router.use(authenticate);
+router.get('/',validate(projectListQuerySchema,'query'),asyncHandler(projectController.list));
+router.post('/',authorize(Role.MANAGER,Role.ADMIN),validate(projectBodySchema),asyncHandler(projectController.create));
+router.patch('/:projectId',authorize(Role.MANAGER,Role.ADMIN),validate(projectParamsSchema,'params'),validate(projectUpdateSchema),asyncHandler(projectController.update));
+router.delete('/:projectId',authorize(Role.MANAGER,Role.ADMIN),validate(projectParamsSchema,'params'),asyncHandler(projectController.archive));
+router.get('/:projectId/members',authorize(Role.MANAGER,Role.ADMIN),validate(projectParamsSchema,'params'),asyncHandler(projectController.members));
+router.put('/:projectId/members/:userPublicId',authorize(Role.MANAGER,Role.ADMIN),validate(projectMemberParamsSchema,'params'),asyncHandler(projectController.assignMember));
+router.delete('/:projectId/members/:userPublicId',authorize(Role.MANAGER,Role.ADMIN),validate(projectMemberParamsSchema,'params'),asyncHandler(projectController.removeMember));
+export default router;

@@ -1,0 +1,356 @@
+openapi: 3.1.0
+info:
+  title: Team Management API
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000/api
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TeamQuery:
+      name: teamPublicId
+      in: query
+      required: true
+      schema: { type: string, format: uuid }
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    Error:
+      type: object
+      required: [success, error]
+      properties:
+        success: { const: false }
+        error:
+          type: object
+          required: [message, requestId]
+          properties:
+            message: { type: string }
+            details: {}
+            requestId: { type: string }
+    AuthBody:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 1, maxLength: 128 }
+    ReportContent:
+      type: object
+      properties:
+        projectPublicIds:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+        completedTasks: { type: array, maxItems: 200, items: { type: object } }
+        plannedTasks: { type: array, maxItems: 200, items: { type: object } }
+        blockers: { type: array, maxItems: 50, items: { type: object } }
+        achievements: { type: array, maxItems: 50, items: { type: object } }
+        timeBreakdowns: { type: array, maxItems: 50, items: { type: object } }
+        notes: { type: [string, 'null'], maxLength: 20000 }
+        links: { type: array, maxItems: 50, items: { type: object } }
+paths:
+  /health:
+    get:
+      summary: Database health check
+      responses:
+        '200': { description: Healthy }
+  /auth/register:
+    post:
+      summary: Register a team member
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [firstName, lastName, email, password] } } } }
+      responses: { '201': { description: Registered }, '422': { description: Invalid input } }
+  /auth/login:
+    post:
+      summary: Log in and set the refresh cookie
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AuthBody' } } } }
+      responses: { '200': { description: Authenticated }, '401': { description: Invalid credentials } }
+  /auth/refresh:
+    post:
+      summary: Rotate the refresh cookie and access token
+      responses: { '200': { description: Refreshed }, '401': { description: Invalid session } }
+  /auth/logout:
+    post:
+      summary: Revoke and clear the refresh cookie
+      responses: { '200': { description: Logged out } }
+  /auth/forgot-password:
+    post:
+      summary: Request a password reset
+      responses: { '200': { description: Accepted } }
+  /auth/reset-password:
+    post:
+      summary: Reset password with a token
+      responses: { '200': { description: Reset }, '400': { description: Invalid token } }
+  /auth/change-password:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Change the current user's password
+      responses: { '200': { description: Changed } }
+  /auth/me:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Current user and accessible teams
+      responses: { '200': { description: Current user } }
+  /auth/accept-invitation:
+    post:
+      summary: Create an account from an invitation
+      responses: { '201': { description: Invitation accepted } }
+  /lookups:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Task and report lookup values
+      responses: { '200': { description: Lookup collections } }
+  /teams:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Teams accessible to the current user
+      responses: { '200': { description: Team list } }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Create a team (admin)
+      responses: { '201': { description: Created } }
+  /teams/{teamId}/members:
+    parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: List members (manager/admin)
+      responses: { '200': { description: Member list } }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Add a member (admin)
+      responses: { '200': { description: Member added } }
+  /teams/{teamId}/members/{userPublicId}:
+    parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: userPublicId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove a member (admin)
+      responses: { '200': { description: Member removed } }
+  /projects:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: List projects for one accessible team
+      parameters:
+        - $ref: '#/components/parameters/TeamQuery'
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, all], default: active }
+      responses: { '200': { description: Project list }, '422': { description: Invalid query } }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Create a project (manager/admin)
+      responses: { '201': { description: Created } }
+  /projects/{projectId}:
+    parameters: [{ $ref: '#/components/parameters/ProjectId' }]
+    patch:
+      security: [{ bearerAuth: [] }]
+      summary: Update a project (manager/admin)
+      responses: { '200': { description: Updated } }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Archive a project (manager/admin)
+      responses: { '200': { description: Archived } }
+  /projects/{projectId}/members:
+    parameters: [{ $ref: '#/components/parameters/ProjectId' }]
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: List assigned project members (manager/admin)
+      responses: { '200': { description: Member list } }
+  /projects/{projectId}/members/{userPublicId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+      - name: userPublicId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Assign a project member (manager/admin)
+      responses: { '200': { description: Assigned } }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Remove a project member (manager/admin)
+      responses: { '200': { description: Removed } }
+  /reporting-periods:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: List periods for one team
+      parameters: [{ $ref: '#/components/parameters/TeamQuery' }]
+      responses: { '200': { description: Period list } }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Create a period (manager/admin)
+      responses: { '201': { description: Created } }
+  /reporting-periods/{id}/close:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Close a reporting period (manager/admin)
+      responses: { '200': { description: Closed } }
+  /users:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: List users (admin)
+      responses: { '200': { description: User list } }
+  /users/{userId}/profile:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: User profile (shared-team manager/admin)
+      responses: { '200': { description: Profile } }
+  /users/{userId}/status:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      security: [{ bearerAuth: [] }]
+      summary: Activate or deactivate a user (admin)
+      responses: { '200': { description: Updated } }
+  /users/{userId}/roles:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      security: [{ bearerAuth: [] }]
+      summary: Replace user roles (admin)
+      responses: { '200': { description: Updated } }
+  /users/invitations:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Invite a user (admin)
+      responses: { '201': { description: Invitation created } }
+  /reports:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Create a weekly report draft
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReportContent' } } } }
+      responses: { '201': { description: Created } }
+  /reports/mine/history:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Current user's report history
+      responses: { '200': { description: History } }
+  /reports/team:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Filter team reports (manager/admin)
+      parameters: [{ $ref: '#/components/parameters/TeamQuery' }]
+      responses: { '200': { description: Reports } }
+  /reports/{reportId}:
+    parameters: [{ $ref: '#/components/parameters/ReportId' }]
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Report detail
+      responses: { '200': { description: Report } }
+    patch:
+      security: [{ bearerAuth: [] }]
+      summary: Replace editable report content
+      responses: { '200': { description: Updated } }
+  /reports/{reportId}/submit:
+    parameters: [{ $ref: '#/components/parameters/ReportId' }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Submit a report
+      responses: { '200': { description: Submitted } }
+  /reports/{reportId}/review:
+    parameters: [{ $ref: '#/components/parameters/ReportId' }]
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Approve or request correction (manager/admin)
+      responses: { '200': { description: Reviewed } }
+  /reports/{reportId}/versions:
+    parameters: [{ $ref: '#/components/parameters/ReportId' }]
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: List report versions
+      responses: { '200': { description: Versions } }
+  /reports/{reportId}/versions/{versionNo}:
+    parameters:
+      - $ref: '#/components/parameters/ReportId'
+      - name: versionNo
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Read a report version
+      responses: { '200': { description: Version } }
+  /dashboard/summary:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Manager dashboard summary
+      parameters: [{ $ref: '#/components/parameters/TeamQuery' }]
+      responses: { '200': { description: Summary } }
+  /dashboard/member-status:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Member submission status
+      parameters: [{ $ref: '#/components/parameters/TeamQuery' }]
+      responses: { '200': { description: Status rows } }
+  /dashboard/task-trend:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Completed task trend
+      parameters: [{ $ref: '#/components/parameters/TeamQuery' }]
+      responses: { '200': { description: Trend } }
+  /dashboard/project-workload:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Project workload excluding drafts
+      parameters: [{ $ref: '#/components/parameters/TeamQuery' }]
+      responses: { '200': { description: Workload } }
+  /dashboard/time-distribution:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Time distribution excluding drafts
+      parameters: [{ $ref: '#/components/parameters/TeamQuery' }]
+      responses: { '200': { description: Distribution } }
+  /dashboard/activity:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Recent team activity
+      parameters: [{ $ref: '#/components/parameters/TeamQuery' }]
+      responses: { '200': { description: Activity } }
+  /dashboard/cross-team-section:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Submitted blockers or achievements
+      parameters:
+        - $ref: '#/components/parameters/TeamQuery'
+        - name: section
+          in: query
+          schema: { type: string, enum: [blockers, achievements], default: blockers }
+      responses: { '200': { description: Section rows } }

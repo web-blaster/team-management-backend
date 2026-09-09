@@ -1,0 +1,17 @@
+import { Router } from 'express';
+import { Role } from '../../constants/roles.js';
+import { authenticate,authorize,validate } from '../../middleware/index.js';
+import { asyncHandler } from '../../utils/core.js';
+import { reportController } from './report.controller.js';
+import { mineQuerySchema,reportContentSchema,reportCreateSchema,reportParamsSchema,reportVersionParamsSchema,reviewSchema,teamReportsQuerySchema } from './report.validation.js';
+const router=Router();router.use(authenticate);
+router.post('/',validate(reportCreateSchema),asyncHandler(reportController.create));
+router.patch('/:reportId',validate(reportParamsSchema,'params'),validate(reportContentSchema),asyncHandler(reportController.update));
+router.post('/:reportId/submit',validate(reportParamsSchema,'params'),asyncHandler(reportController.submit));
+router.get('/mine/history',validate(mineQuerySchema,'query'),asyncHandler(reportController.mine));
+router.get('/team',authorize(Role.MANAGER,Role.ADMIN),validate(teamReportsQuerySchema,'query'),asyncHandler(reportController.team));
+router.get('/:reportId/versions',validate(reportParamsSchema,'params'),asyncHandler(reportController.versions));
+router.get('/:reportId/versions/:versionNo',validate(reportVersionParamsSchema,'params'),asyncHandler(reportController.version));
+router.get('/:reportId',validate(reportParamsSchema,'params'),asyncHandler(reportController.detail));
+router.post('/:reportId/review',authorize(Role.MANAGER,Role.ADMIN),validate(reportParamsSchema,'params'),validate(reviewSchema),asyncHandler(reportController.review));
+export default router;

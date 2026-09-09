@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { Role } from '../../constants/roles.js';
+import { authenticate,authorize,validate } from '../../middleware/index.js';
+import { asyncHandler } from '../../utils/core.js';
+import { reportingPeriodController } from './reportingPeriod.controller.js';
+import { periodCreateSchema,periodListQuerySchema,periodParamsSchema } from './reportingPeriod.validation.js';
+const router=Router();router.use(authenticate);
+router.get('/',validate(periodListQuerySchema,'query'),asyncHandler(reportingPeriodController.list));
+router.post('/',authorize(Role.MANAGER,Role.ADMIN),validate(periodCreateSchema),asyncHandler(reportingPeriodController.create));
+router.post('/:id/close',authorize(Role.MANAGER,Role.ADMIN),validate(periodParamsSchema,'params'),asyncHandler(reportingPeriodController.close));
+export default router;

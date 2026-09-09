@@ -1,0 +1,42 @@
+{
+  "name": "team-management-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/run-environment.js development server",
+    "dev:watch": "nodemon scripts/run-environment.js development server",
+    "start": "node src/server.js",
+    "start:development": "node scripts/run-environment.js development server",
+    "start:staging": "node scripts/run-environment.js staging server",
+    "start:production": "node scripts/run-environment.js production server",
+    "worker": "node src/workers/outbox.worker.js",
+    "worker:development": "node scripts/run-environment.js development worker",
+    "worker:staging": "node scripts/run-environment.js staging worker",
+    "worker:production": "node scripts/run-environment.js production worker",
+    "db:migrate": "node scripts/migrate.js",
+    "seed:demo": "node scripts/seed-demo.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.14.0",
+    "pino": "^9.0.0",
+    "pino-http": "^10.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "yaml": "^2.9.0"
+  }
+}
