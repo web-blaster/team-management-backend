@@ -2,8 +2,11 @@ import { pool } from '../../config/db.js';
 
 export class TeamRepository {
   constructor(db = pool) { this.db = db; }
-  async findByPublicId(publicId, db = this.db) {
-    const [rows]=await db.execute('SELECT * FROM teams WHERE public_id=? LIMIT 1',[publicId]);
+  async findByPublicId(publicId, db = this.db, forUpdate = false) {
+    const [rows]=await db.execute(
+      `SELECT id,public_id,name,description,status_code FROM teams WHERE public_id=? LIMIT 1 ${forUpdate ? 'FOR UPDATE' : ''}`,
+      [publicId]
+    );
     return rows[0] ?? null;
   }
   async listForUser(userId, isAdmin, activeStatus, archivedStatus, db = this.db) {
@@ -40,6 +43,36 @@ export class TeamRepository {
       [teamId,userId]
     );
     return rows.length>0;
+  }
+  async update(id, changes, db = this.db) {
+    const fields = [], values = [];
+    if (changes.name !== undefined) {
+      fields.push('name=?');
+      values.push(changes.name);
+    }
+    if (changes.description !== undefined) {
+      fields.push('description=?');
+      values.push(changes.description);
+    }
+    if (!fields.length) return;
+    await db.execute(`UPDATE teams SET ${fields.join(',')} WHERE id=?`, [...values, id]);
+  }
+  async hasRelatedRecords(teamId, db = this.db) {
+    const [rows] = await db.execute(
+      `SELECT (
+        EXISTS(SELECT 1 FROM team_members WHERE team_id=?) OR
+        EXISTS(SELECT 1 FROM projects WHERE team_id=?) OR
+        EXISTS(SELECT 1 FROM reporting_periods WHERE team_id=?) OR
+        EXISTS(SELECT 1 FROM weekly_reports WHERE team_id=?) OR
+        EXISTS(SELECT 1 FROM user_invitations WHERE team_id=?) OR
+        EXISTS(SELECT 1 FROM activity_logs WHERE team_id=?)
+      ) AS in_use`,
+      Array(6).fill(teamId)
+    );
+    return Boolean(Number(rows[0].in_use));
+  }
+  async remove(id, db = this.db) {
+    await db.execute('DELETE FROM teams WHERE id=?', [id]);
   }
   async listMembers(teamId, db=this.db) {
     const [rows]=await db.execute(

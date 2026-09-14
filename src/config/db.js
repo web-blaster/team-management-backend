@@ -1,5 +1,5 @@
-import mysql from 'mysql2/promise';
-import { env } from './env.js';
+import mysql from "mysql2/promise";
+import { env } from "./env.js";
 
 export const pool = mysql.createPool({
   host: env.DB_HOST,
@@ -10,10 +10,10 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: env.DB_CONNECTION_LIMIT,
   queueLimit: 0,
-  charset: 'utf8mb4',
-  timezone: 'Z',
+  charset: "utf8mb4",
+  timezone: "Z",
   decimalNumbers: true,
-  enableKeepAlive: true
+  enableKeepAlive: true,
 });
 
 export async function withTransaction(work) {
