@@ -8,8 +8,8 @@ import { AppError, uuid } from "../../utils/core.js";
 import {
   assertManagerTeamAccess,
   assertTeamMember,
-  getTeamByPublicId,
-} from "../../services/access.service.js";
+  requireTeamByPublicId,
+} from "../teams/team-access.service.js";
 import { activity, outbox } from "../../services/audit.service.js";
 import * as repo from "./report.repository.js";
 
@@ -35,7 +35,7 @@ function publicReportHeader(report) {
 
 export class ReportService {
   async create(user, data) {
-    const team = await getTeamByPublicId(data.teamPublicId);
+    const team = await requireTeamByPublicId(data.teamPublicId);
     await assertTeamMember(user, team.id);
     return withTransaction(async (conn) => {
       const period = await repo.findOpenPeriod(
@@ -195,7 +195,7 @@ export class ReportService {
   async mine(user, { teamPublicId }) {
     let teamId = null;
     if (teamPublicId) {
-      const team = await getTeamByPublicId(teamPublicId);
+      const team = await requireTeamByPublicId(teamPublicId);
       await assertTeamMember(user, team.id);
       teamId = team.id;
     }
@@ -203,7 +203,7 @@ export class ReportService {
   }
 
   async teamReports(user, filters) {
-    const team = await getTeamByPublicId(filters.teamPublicId);
+    const team = await requireTeamByPublicId(filters.teamPublicId);
     await assertManagerTeamAccess(user, team.id);
     return repo.listTeam({ ...filters, teamId: team.id });
   }

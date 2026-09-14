@@ -118,7 +118,92 @@ paths:
     post:
       security: [{ bearerAuth: [] }]
       summary: Create a team (admin)
-      responses: { '201': { description: Created } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 150 }
+                description: { type: [string, 'null'], maxLength: 5000 }
+      responses:
+        '201':
+          description: Active team created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success: { const: true }
+                  data:
+                    type: object
+                    required: [publicId, name, description, statusCode]
+                    properties:
+                      publicId: { type: string, format: uuid }
+                      name: { type: string }
+                      description: { type: [string, 'null'] }
+                      statusCode: { type: integer, const: 202 }
+        '401': { description: Authentication required }
+        '403': { description: Administrator role required }
+        '409': { description: A team with this name already exists }
+        '422': { description: Invalid name or description }
+  /teams/{teamId}:
+    parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      security: [{ bearerAuth: [] }]
+      summary: Edit a team (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                name: { type: string, minLength: 2, maxLength: 150 }
+                description: { type: [string, 'null'], maxLength: 5000 }
+      responses:
+        '200':
+          description: Updated team (publicId, name, description, statusCode) in the success/data envelope
+        '401': { description: Authentication required }
+        '403': { description: Administrator role required }
+        '404': { description: Team not found }
+        '409': { description: A team with this name already exists }
+        '422': { description: Invalid team ID or update fields }
+    delete:
+      security: [{ bearerAuth: [] }]
+      summary: Delete an unused team (admin)
+      description: >
+        Permanently deletes only teams without membership records, projects,
+        reporting periods, reports, invitations, or audit history.
+        Related records are never deleted by this endpoint.
+      responses:
+        '200':
+          description: Team deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success: { const: true }
+                  data:
+                    type: object
+                    required: [deleted]
+                    properties:
+                      deleted: { const: true }
+        '401': { description: Authentication required }
+        '403': { description: Administrator role required }
+        '404': { description: Team not found }
+        '409': { description: Team has related records and cannot be deleted }
+        '422': { description: Invalid team ID }
   /teams/{teamId}/members:
     parameters:
       - name: teamId
