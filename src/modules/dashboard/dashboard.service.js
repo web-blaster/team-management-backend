@@ -1,24 +1,15 @@
-import { AppError } from "../../utils/core.js";
 import {
   assertManagerTeamAccess,
-  getTeamByPublicId,
-} from "../../services/access.service.js";
-import { reportingPeriodRepository } from "../reportingPeriods/reportingPeriod.repository.js";
+  requireTeamByPublicId,
+} from "../teams/team-access.service.js";
+import { requireReportingPeriodForTeam } from "../reportingPeriods/reporting-period-access.service.js";
 import { dashboardRepository } from "./dashboard.repository.js";
 
 async function resolvePeriod(teamId, id) {
-  const period = id
-    ? await reportingPeriodRepository.findByIdAndTeam(id, teamId)
-    : await reportingPeriodRepository.findNearest(teamId);
-  if (!period)
-    throw new AppError(
-      404,
-      id ? "Reporting period not found" : "No reporting period configured",
-    );
-  return period;
+  return requireReportingPeriodForTeam(teamId, id);
 }
 async function context(user, query) {
-  const team = await getTeamByPublicId(query.teamPublicId);
+  const team = await requireTeamByPublicId(query.teamPublicId);
   await assertManagerTeamAccess(user, team.id);
   const period = await resolvePeriod(team.id, query.reportingPeriodId ?? null);
   return { team, period };
@@ -58,7 +49,7 @@ export class DashboardService {
     };
   }
   async taskTrend(user, query) {
-    const team = await getTeamByPublicId(query.teamPublicId);
+    const team = await requireTeamByPublicId(query.teamPublicId);
     await assertManagerTeamAccess(user, team.id);
     return dashboardRepository.taskTrend(team.id, query.userPublicId);
   }
@@ -77,7 +68,7 @@ export class DashboardService {
     };
   }
   async activity(user, query) {
-    const team = await getTeamByPublicId(query.teamPublicId);
+    const team = await requireTeamByPublicId(query.teamPublicId);
     await assertManagerTeamAccess(user, team.id);
     return dashboardRepository.recentActivity(team.id);
   }
